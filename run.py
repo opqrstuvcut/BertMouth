@@ -139,9 +139,10 @@ def train(args, tokenizer, device):
             running_loss += loss.item()
             running_num += len(batch[0])
             if (step + 1) % loss_log_intervals == 0:
-                print("[{0} epochs {1} / {2} batches] train loss: {3:.3g}".format(epoch + 1, step + 1,
-                                                                                  len(train_dataloader),
-                                                                                  running_loss / running_num))
+                logger.info("[{0} epochs {1} / {2} batches]"
+                            "train loss: {3: .3 g} ".format(epoch + 1, step + 1,
+                                                            len(train_dataloader),
+                                                            running_loss / running_num))
                 running_loss = 0.
                 running_num = 0
 
@@ -151,8 +152,8 @@ def train(args, tokenizer, device):
         for batch in valid_dataloader:
             valid_loss += calc_batch_loss(batch).item()
             valid_num += len(batch[0])
-        print("[{0} epoch] valid loss: {1:.3g}".format(epoch + 1,
-                                                       valid_loss / valid_num))
+        logger.info("[{0} epoch] valid loss: {1:.3g}".format(epoch + 1,
+                                                             valid_loss / valid_num))
 
         model.train()
 
