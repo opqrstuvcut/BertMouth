@@ -4,6 +4,7 @@ import argparse
 import os
 import random
 import logging
+import random
 
 import torch
 import torch.nn.functional as F
@@ -34,9 +35,9 @@ def parse_argument():
     parser.add_argument("--output_dir", default=None, type=str, required=True,
                         help="The output directory where the model checkpoints and predictions will be written.")
     parser.add_argument("--train_file", default=None,
-                        type=str, help="file path for training.")
+                        type=str, help="A file path for training.")
     parser.add_argument("--valid_file", default=None,
-                        type=str, help="file path for validation.")
+                        type=str, help="A file path for validation.")
     parser.add_argument("--max_seq_length", default=128, type=int,
                         help="The maximum total input sequence length after WordPiece tokenization. Sequences "
                              "longer than this will be truncated, and sequences shorter than this will be padded.")
@@ -56,7 +57,15 @@ def parse_argument():
     parser.add_argument('--seed',
                         type=int,
                         default=42,
-                        help="Random seed for initialization.")
+                        help="A random seed for initialization.")
+    parser.add_argument('--max_iter',
+                        type=int,
+                        default=10,
+                        help="The number of iterations in text generation.")
+    parser.add_argument('--generated_seq_length',
+                        type=int,
+                        default=50,
+                        help="The sequence length generated.")
 
     args = parser.parse_args()
     return args
@@ -160,7 +169,22 @@ def train(args, tokenizer, device):
     save(args, model, tokenizer, "model")
 
 
-def predict(args, tokenizer, device):
+def initialization_text(tokenizer, length):
+    except_tokens = ["[MASK]", "[PAD]", "[UNK]", "[CLS]", "[SEP]"]
+    except_ids = [tokenizer.ids_to_tokens[token] for token in except_tokens]
+    candidate_ids = [i for i in range(tokenizer.vocab_size)
+                     if i not in except_ids]
+
+    init_tokens = []
+    init_tokens.append(tokenizer.vocab["[CLS]"])
+    for _ in range(length):
+        init_tokens.append(random.choice(candidate_ids))
+    init_tokens.append("[SEP]")
+
+    return init_tokens
+
+
+def generate(args, tokenizer, device, max_iter=10, length=50, max_length=128):
     if not os.path.isdir(args.output_dir):
         os.makedirs(args.output_dir)
 
@@ -170,6 +194,27 @@ def predict(args, tokenizer, device):
                                       state_dict=model_state_dict,
                                       num_labels=tokenizer.vocab_size)
     model.to(device)
+
+    generated_token_ids = initialization_text(tokenizer, length)
+    input_type_id = [0] * max_length
+    input_mask = [1] * len(generated_token_ids)
+    while len(input_mask) < max_length:
+        input_mask.append(0)
+
+    generated_token_ids = torch.tensor(generated_token_ids, dtype=torch.long)
+    input_type_id = torch.tensor(input_type_id, dtype=torch.long)
+    input_mask = torch.tensor(input_mask, dtype=torch.long)
+
+    for i in range(max_iter):
+        for j in range(length):
+            generated_token_ids[j + 1] = "[MASK]"
+            logits = model(generated_token_ids, input_type_id, input_mask)
+            sampled_token_id = torch.argmax(logits[j + 1])
+            generated_token_ids[j + 1] = sampled_token_id
+        sampled_sequence = [tokenizer.ids_to_tokens[token_id]
+                            for token_id in generated_token_ids]
+        logger.info("{}-th sampled sequence: {}".format(i + 1,
+                                                        sampled_sequence))
 
 
 def main():
@@ -191,7 +236,7 @@ def main():
     if args.do_train:
         train(args, tokenizer, device)
     if args.do_predict:
-        predict(args, tokenizer, device)
+        generate(args, tokenizer, device, max_iter=)
 
 
 if __name__ == '__main__':

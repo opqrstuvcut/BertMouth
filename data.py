@@ -107,11 +107,7 @@ def convert_examples_to_features(examples, seq_length, tokenizer, ignore_index=-
 
     features = []
     for example in enumerate(examples):
-        subwords = []
-        for token in example.tokens:
-            for subword in tokenizer.tokenize(token):
-                subwords.append(subword)
-
+        subwords = tokenizer.tokenize(example.text)
         features.append(make_feature(example.unique_id, subwords))
 
     return features
