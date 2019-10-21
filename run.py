@@ -66,6 +66,8 @@ def parse_argument():
                         type=int,
                         default=50,
                         help="The sequence length generated.")
+    parser.add_argument("--adam_epsilon", default=1e-8, type=float,
+                        help="Epsilon for Adam optimizer.")
 
     args = parser.parse_args()
     return args
@@ -98,7 +100,7 @@ def train(args, tokenizer, device):
 
     logger.info("building model")
     model = BertMouth.from_pretrained(args.bert_model,
-                                      num_labels=len(tokenizer.vocab_size))
+                                      num_labels=tokenizer.vocab_size)
     model.to(device)
 
     param_optimizer = list(model.named_parameters())
@@ -119,11 +121,11 @@ def train(args, tokenizer, device):
     scheduler = WarmupLinearSchedule(optimizer,
                                      warmup_steps=0,
                                      t_total=optimization_steps)
-    loss_fct = CrossEntropyLoss(ignore_index=-1)
+    loss_fct = CrossEntropyLoss(ignore_index=0)
 
     def calc_batch_loss(batch):
         batch = tuple(t.to(device) for t in batch)
-        input_ids, y, input_mask, input_type_id = batch
+        input_ids, y, input_mask, input_type_id, masked_pos = batch
 
         logits = model(input_ids, input_type_id, input_mask)
         logits = logits.view(-1, tokenizer.vocab_size)
@@ -134,6 +136,7 @@ def train(args, tokenizer, device):
     logger.info("train starts")
     loss_log_intervals = 5
     model.train()
+    generated_texts = []
     for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
         running_loss = 0.
         running_num = 0
@@ -149,9 +152,9 @@ def train(args, tokenizer, device):
             running_num += len(batch[0])
             if (step + 1) % loss_log_intervals == 0:
                 logger.info("[{0} epochs {1} / {2} batches]"
-                            "train loss: {3: .3 g} ".format(epoch + 1, step + 1,
-                                                            len(train_dataloader),
-                                                            running_loss / running_num))
+                            "train loss: {3:.3g} ".format(epoch + 1, step + 1,
+                                                          len(train_dataloader),
+                                                          running_loss / running_num))
                 running_loss = 0.
                 running_num = 0
 
@@ -161,6 +164,10 @@ def train(args, tokenizer, device):
         for batch in valid_dataloader:
             valid_loss += calc_batch_loss(batch).item()
             valid_num += len(batch[0])
+
+        generated_texts.append(generate(tokenizer=tokenizer,
+                                        device=device,
+                                        model=model))
         logger.info("[{0} epoch] valid loss: {1:.3g}".format(epoch + 1,
                                                              valid_loss / valid_num))
 
@@ -171,7 +178,7 @@ def train(args, tokenizer, device):
 
 def initialization_text(tokenizer, length):
     except_tokens = ["[MASK]", "[PAD]", "[UNK]", "[CLS]", "[SEP]"]
-    except_ids = [tokenizer.ids_to_tokens[token] for token in except_tokens]
+    except_ids = [tokenizer.vocab[token] for token in except_tokens]
     candidate_ids = [i for i in range(tokenizer.vocab_size)
                      if i not in except_ids]
 
@@ -179,42 +186,44 @@ def initialization_text(tokenizer, length):
     init_tokens.append(tokenizer.vocab["[CLS]"])
     for _ in range(length):
         init_tokens.append(random.choice(candidate_ids))
-    init_tokens.append("[SEP]")
+    init_tokens.append(tokenizer.vocab["[SEP]"])
 
     return init_tokens
 
 
-def generate(args, tokenizer, device, max_iter=10, length=50, max_length=128):
-    if not os.path.isdir(args.output_dir):
-        os.makedirs(args.output_dir)
-
-    model_state_dict = torch.load(os.path.join(args.bert_model, "pytorch_model.bin"),
-                                  map_location=device)
-    model = BertMouth.from_pretrained(args.bert_model,
-                                      state_dict=model_state_dict,
-                                      num_labels=tokenizer.vocab_size)
-    model.to(device)
+def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=None):
+    if isinstance(model, str):
+        model_state_dict = torch.load(os.path.join(model, "pytorch_model.bin"),
+                                      map_location=device)
+        model = BertMouth.from_pretrained(model,
+                                          state_dict=model_state_dict,
+                                          num_labels=tokenizer.vocab_size)
+        model.to(device)
 
     generated_token_ids = initialization_text(tokenizer, length)
     input_type_id = [0] * max_length
     input_mask = [1] * len(generated_token_ids)
     while len(input_mask) < max_length:
+        generated_token_ids.append(0)
         input_mask.append(0)
 
-    generated_token_ids = torch.tensor(generated_token_ids, dtype=torch.long)
-    input_type_id = torch.tensor(input_type_id, dtype=torch.long)
-    input_mask = torch.tensor(input_mask, dtype=torch.long)
+    generated_token_ids = torch.tensor([generated_token_ids],
+                                       dtype=torch.long).to(device)
+    input_type_id = torch.tensor([input_type_id], dtype=torch.long).to(device)
+    input_mask = torch.tensor([input_mask], dtype=torch.long).to(device)
 
     for i in range(max_iter):
         for j in range(length):
-            generated_token_ids[j + 1] = "[MASK]"
-            logits = model(generated_token_ids, input_type_id, input_mask)
+            generated_token_ids[0, j + 1] = tokenizer.vocab["[MASK]"]
+            logits = model(generated_token_ids, input_type_id, input_mask)[0]
             sampled_token_id = torch.argmax(logits[j + 1])
-            generated_token_ids[j + 1] = sampled_token_id
+            generated_token_ids[0, j + 1] = sampled_token_id
         sampled_sequence = [tokenizer.ids_to_tokens[token_id]
-                            for token_id in generated_token_ids]
-        logger.info("{}-th sampled sequence: {}".format(i + 1,
-                                                        sampled_sequence))
+                            for token_id in generated_token_ids[0].cpu().numpy()]
+        sampled_sequence = "".join([token[2:] if token.startswith("##") else token
+                                    for token in sampled_sequence[1:length]])
+    logger.info("sampled sequence: {}".format(sampled_sequence))
+    return sampled_sequence
 
 
 def main():
@@ -236,7 +245,8 @@ def main():
     if args.do_train:
         train(args, tokenizer, device)
     if args.do_predict:
-        generate(args, tokenizer, device, max_iter=)
+        generate(tokenizer, device, max_iter=args.max_iter,
+                 length=args.generated_seq_length, model=args.bert_model)
 
 
 if __name__ == '__main__':
