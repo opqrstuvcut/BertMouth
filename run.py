@@ -15,6 +15,7 @@ from transformers.tokenization_bert import BertTokenizer
 from transformers.optimization import AdamW, WarmupLinearSchedule
 from transformers import CONFIG_NAME, WEIGHTS_NAME
 from torch import optim
+from torch.utils.tensorboard import SummaryWriter
 
 from model import BertMouth
 from data import make_dataloader
@@ -136,27 +137,26 @@ def train(args, tokenizer, device):
     logger.info("train starts")
     loss_log_intervals = 5
     model.train()
+    summary_writer = SummaryWriter(log_dir="logs")
     generated_texts = []
     for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
-        running_loss = 0.
+        train_loss = 0.
         running_num = 0
         for step, batch in enumerate(train_dataloader):
             loss = calc_batch_loss(batch)
             loss.backward()
 
-            scheduler.step()
             optimizer.step()
+            scheduler.step()
             optimizer.zero_grad()
 
-            running_loss += loss.item()
+            train_loss += loss.item()
             running_num += len(batch[0])
-            if (step + 1) % loss_log_intervals == 0:
-                logger.info("[{0} epochs {1} / {2} batches]"
-                            "train loss: {3:.3g} ".format(epoch + 1, step + 1,
-                                                          len(train_dataloader),
-                                                          running_loss / running_num))
-                running_loss = 0.
-                running_num = 0
+        logger.info("[{0} epochs]"
+                    "train loss: {1:.3g} ".format(epoch + 1,
+                                                  train_loss / running_num))
+        summary_writer.add_scalar("train_loss",
+                                  train_loss / running_num, epoch)
 
         model.eval()
         valid_loss = 0.
@@ -167,12 +167,16 @@ def train(args, tokenizer, device):
 
         generated_texts.append(generate(tokenizer=tokenizer,
                                         device=device,
+                                        length=25,
+                                        max_length=args.max_seq_length,
                                         model=model))
-        logger.info("[{0} epoch] valid loss: {1:.3g}".format(epoch + 1,
-                                                             valid_loss / valid_num))
+        logger.info("[{0} epochs] valid loss: {1:.3g}".format(epoch + 1,
+                                                              valid_loss / valid_num))
+        summary_writer.add_scalar("val_loss", valid_loss / valid_num, epoch)
 
         model.train()
 
+    summary_writer.close()
     save(args, model, tokenizer, "model")
 
 
