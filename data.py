@@ -47,7 +47,7 @@ class BertMouthDataset(torch.utils.data.Dataset):
         input_type_ids = self._all_input_type_ids[idx]
         num_tokens = self._all_num_tokens[idx]
 
-        target_token_pos = np.random.randint(1, num_tokens - 2)
+        target_token_pos = np.random.randint(1, num_tokens - 1)
 
         y = [self._ignore_index] * len(input_ids)
         y[target_token_pos] = input_ids[target_token_pos]

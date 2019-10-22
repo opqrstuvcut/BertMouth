@@ -226,7 +226,7 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=No
         sampled_sequence = [tokenizer.ids_to_tokens[token_id]
                             for token_id in generated_token_ids[0].cpu().numpy()]
         sampled_sequence = "".join([token[2:] if token.startswith("##") else token
-                                    for token in sampled_sequence[1:length]])
+                                    for token in sampled_sequence[1:length + 1]])
     logger.info("sampled sequence: {}".format(sampled_sequence))
     return sampled_sequence
 
