@@ -5,6 +5,7 @@ import os
 import random
 import logging
 import random
+import datetime
 
 import torch
 import torch.nn.functional as F
@@ -33,7 +34,7 @@ def parse_argument():
                         help="Bert pre-trained model selected in the list: bert-base-uncased, "
                         "bert-large-uncased, bert-base-cased, bert-large-cased, bert-base-multilingual-uncased, "
                         "bert-base-multilingual-cased, bert-base-chinese.")
-    parser.add_argument("--output_dir", default="./output", type=str,
+    parser.add_argument("--output_dir", default="./models", type=str,
                         help="The output directory where the model checkpoints and predictions will be written.")
     parser.add_argument("--train_file", default=None,
                         type=str, help="A file path for training.")
@@ -135,7 +136,6 @@ def train(args, tokenizer, device):
         return loss
 
     logger.info("train starts")
-    loss_log_intervals = 5
     model.train()
     summary_writer = SummaryWriter(log_dir="logs")
     generated_texts = []
@@ -177,7 +177,8 @@ def train(args, tokenizer, device):
         model.train()
 
     summary_writer.close()
-    save(args, model, tokenizer, "model")
+    dt_now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    save(args, model, tokenizer, str(dt_now))
 
 
 def initialization_text(tokenizer, length):
@@ -216,7 +217,7 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=No
     input_type_id = torch.tensor([input_type_id], dtype=torch.long).to(device)
     input_mask = torch.tensor([input_mask], dtype=torch.long).to(device)
 
-    for i in range(max_iter):
+    for _ in range(max_iter):
         for j in range(length):
             generated_token_ids[0, j + 1] = tokenizer.vocab["[MASK]"]
             logits = model(generated_token_ids, input_type_id, input_mask)[0]
@@ -226,7 +227,7 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=No
                             for token_id in generated_token_ids[0].cpu().numpy()]
         sampled_sequence = "".join([token[2:] if token.startswith("##") else token
                                     for token in sampled_sequence[1:length]])
-        logger.info("sampled sequence: {}".format(sampled_sequence))
+    logger.info("sampled sequence: {}".format(sampled_sequence))
     return sampled_sequence
 
 
