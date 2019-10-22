@@ -33,7 +33,7 @@ def parse_argument():
                         help="Bert pre-trained model selected in the list: bert-base-uncased, "
                         "bert-large-uncased, bert-base-cased, bert-large-cased, bert-base-multilingual-uncased, "
                         "bert-base-multilingual-cased, bert-base-chinese.")
-    parser.add_argument("--output_dir", default=None, type=str, required=True,
+    parser.add_argument("--output_dir", default="./output", type=str,
                         help="The output directory where the model checkpoints and predictions will be written.")
     parser.add_argument("--train_file", default=None,
                         type=str, help="A file path for training.")
@@ -44,8 +44,8 @@ def parse_argument():
                              "longer than this will be truncated, and sequences shorter than this will be padded.")
     parser.add_argument("--do_train", action='store_true',
                         help="Whether to run training.")
-    parser.add_argument("--do_predict", action='store_true',
-                        help="Whether to run eval on the dev set.")
+    parser.add_argument("--do_generate", action='store_true',
+                        help="Whether to generate text.")
     parser.add_argument("--train_batch_size", default=32,
                         type=int, help="Total batch size for training.")
     parser.add_argument("--learning_rate", default=5e-5,
@@ -57,13 +57,13 @@ def parse_argument():
                         help="Whether not to use CUDA when available.")
     parser.add_argument('--seed',
                         type=int,
-                        default=42,
+                        default=-1,
                         help="A random seed for initialization.")
     parser.add_argument('--max_iter',
                         type=int,
                         default=10,
                         help="The number of iterations in text generation.")
-    parser.add_argument('--generated_seq_length',
+    parser.add_argument('--seq_length',
                         type=int,
                         default=50,
                         help="The sequence length generated.")
@@ -226,16 +226,17 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=No
                             for token_id in generated_token_ids[0].cpu().numpy()]
         sampled_sequence = "".join([token[2:] if token.startswith("##") else token
                                     for token in sampled_sequence[1:length]])
-    logger.info("sampled sequence: {}".format(sampled_sequence))
+        logger.info("sampled sequence: {}".format(sampled_sequence))
     return sampled_sequence
 
 
 def main():
     args = parse_argument()
 
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    if args.seed is not -1:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available()
                           and not args.no_cuda else "cpu")
@@ -248,9 +249,9 @@ def main():
 
     if args.do_train:
         train(args, tokenizer, device)
-    if args.do_predict:
+    if args.do_generate:
         generate(tokenizer, device, max_iter=args.max_iter,
-                 length=args.generated_seq_length, model=args.bert_model)
+                 length=args.seq_length, model=args.bert_model)
 
 
 if __name__ == '__main__':
