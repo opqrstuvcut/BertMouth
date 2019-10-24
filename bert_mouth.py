@@ -92,6 +92,8 @@ def save(args, model, tokenizer, name):
     output_args_file = os.path.join(output_dir, 'training_args.bin')
     torch.save(args, output_args_file)
 
+    logger.info("Model are saved in {}".format(output_dir))
+
 
 def train(args, tokenizer, device):
     logger.info("loading data")
@@ -139,42 +141,46 @@ def train(args, tokenizer, device):
     model.train()
     summary_writer = SummaryWriter(log_dir="logs")
     generated_texts = []
-    for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
-        train_loss = 0.
-        running_num = 0
-        for step, batch in enumerate(train_dataloader):
-            loss = calc_batch_loss(batch)
-            loss.backward()
+    try:
+        for epoch in trange(int(args.num_train_epochs), desc="Epoch"):
+            train_loss = 0.
+            running_num = 0
+            for step, batch in enumerate(train_dataloader):
+                loss = calc_batch_loss(batch)
+                loss.backward()
 
-            optimizer.step()
-            scheduler.step()
-            optimizer.zero_grad()
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
 
-            train_loss += loss.item()
-            running_num += len(batch[0])
-        logger.info("[{0} epochs]"
-                    "train loss: {1:.3g} ".format(epoch + 1,
-                                                  train_loss / running_num))
-        summary_writer.add_scalar("train_loss",
-                                  train_loss / running_num, epoch)
+                train_loss += loss.item()
+                running_num += len(batch[0])
+            logger.info("[{0} epochs]"
+                        "train loss: {1:.3g} ".format(epoch + 1,
+                                                      train_loss / running_num))
+            summary_writer.add_scalar("train_loss",
+                                      train_loss / running_num, epoch)
 
-        model.eval()
-        valid_loss = 0.
-        valid_num = 0
-        for batch in valid_dataloader:
-            valid_loss += calc_batch_loss(batch).item()
-            valid_num += len(batch[0])
+            model.eval()
+            valid_loss = 0.
+            valid_num = 0
+            for batch in valid_dataloader:
+                valid_loss += calc_batch_loss(batch).item()
+                valid_num += len(batch[0])
 
-        generated_texts.append(generate(tokenizer=tokenizer,
-                                        device=device,
-                                        length=25,
-                                        max_length=args.max_seq_length,
-                                        model=model))
-        logger.info("[{0} epochs] valid loss: {1:.3g}".format(epoch + 1,
-                                                              valid_loss / valid_num))
-        summary_writer.add_scalar("val_loss", valid_loss / valid_num, epoch)
+            generated_texts.append(generate(tokenizer=tokenizer,
+                                            device=device,
+                                            length=25,
+                                            max_length=args.max_seq_length,
+                                            model=model))
+            logger.info("[{0} epochs] valid loss: {1:.3g}".format(epoch + 1,
+                                                                  valid_loss / valid_num))
+            summary_writer.add_scalar(
+                "val_loss", valid_loss / valid_num, epoch)
 
-        model.train()
+            model.train()
+    except KeyboardInterrupt:
+        logger.info("KeyboardInterrupt")
 
     summary_writer.close()
     dt_now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
