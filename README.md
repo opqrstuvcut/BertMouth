@@ -2,6 +2,7 @@
 This repository is a reimplementation of the paper (BERT has a Mouth, and It Must Speak: BERT as a Markov Random Field Language Model: https://arxiv.org/abs/1902.04094).
                                       
 ## Requirement
+- Python3
 - PyTorch (1.0+)
 - Transformers (2.1.1)
 - NumPy
