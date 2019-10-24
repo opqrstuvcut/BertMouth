@@ -1,14 +1,16 @@
 # BertMouth
 This repository is a reimplementation of the paper (BERT has a Mouth, and It Must Speak: BERT as a Markov Random Field Language Model: https://arxiv.org/abs/1902.04094).
                                       
-# Requirement
+## Requirement
 - PyTorch (1.0+)
 - Transformers (2.1.1)
 - NumPy
 - tqdm 
+
+A trained Pokemon text generation model is https://github.com/opqrstuvcut/pokemon_bert_model.
                                                                                                                                                                       
-# Usage                                                                                                                                                                                                   
-## generate text
+## Usage                                                                                                                                                                                                   
+### generate text
 
 Command example:
 ```
@@ -36,7 +38,7 @@ generated text examples:
 9. なんでも食べる。両腕の鋭いカマで相手を包みこみ怒らせたところに巻きつき次の日には風に乗って空を飛ぶ。
 10. 明かりのカマは１トン。暗闇でもかみちぎるシッポのようなトゲは強い脚力でふくらむ。
 
-## train on your data 
+### train on your data 
 
 Command example:
 ```
