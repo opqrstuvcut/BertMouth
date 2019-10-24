@@ -237,7 +237,7 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=No
         if torch.equal(pre_tokens, generated_token_ids):
             break
         pre_tokens = generated_token_ids.clone()
-        logger.info("sampled sequence: {}".format(sampled_sequence))
+    logger.info("sampled sequence: {}".format(sampled_sequence))
 
     return sampled_sequence
 
