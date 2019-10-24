@@ -33,7 +33,7 @@ def main():
             row = row.replace(" ", "")
             result = jumanpp.analysis(mojimoji.han_to_zen(row))
             w.write(" ".join([mrph.midasi for mrph in result.mrph_list()])
-                    + "\n")
+                    + "。\n")
 
 
 if __name__ == '__main__':

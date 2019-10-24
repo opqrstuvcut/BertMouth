@@ -97,6 +97,8 @@ def convert_examples_to_features(examples, seq_length, tokenizer, ignore_index=0
     features = []
     for example in examples:
         subwords = tokenizer.tokenize(example.text)
+        if len(subwords) > seq_length - 2:
+            continue
         features.append(make_feature(example.unique_id, subwords))
 
     return features
