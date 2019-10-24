@@ -8,7 +8,7 @@ This repository is a reimplementation of the paper (BERT has a Mouth, and It Mus
 - NumPy
 - tqdm 
 
-A trained Pokemon text generation model is https://github.com/opqrstuvcut/pokemon_bert_model.
+A trained Pokemon text generation model is https://drive.google.com/uc?id=1vAoIjqhNaru9OjV87VwS64-_WSjInGAQ&export=download.
                                                                                                                                                                       
 ## Usage                                                                                                                                                                                                   
 ### generate text
@@ -22,10 +22,10 @@ python ./bert_mouth.py \
 --max_iter 5
 ```
 
-- bert_model: Trained model path.                                                                                                                                                                     
-- max_seq_length: Maximum sequence length in BERT. This value depends on pretraining setting. 
-- seq_length: Generated text length.
-- max_iter: Number of iteration in the Gibbs sampling.
+- bert_model: trained model path.                                                                                                                                                                     
+- max_seq_length: maximum sequence length in BERT. This value depends on pretraining setting. 
+- seq_length: generated text length.
+- max_iter: number of iteration in the Gibbs sampling.
 
 generated text examples:
 1. 時速は３００キロのスピード。真っ暗なヒレを使い戦うが数は少ない。
@@ -54,13 +54,13 @@ Command example:
   --num_train_epochs 100
   ```
 
-- bert_model: Pretrained BERT model path.
-- output_dir: Save path.
-- train_file: Training file path.
-- valid_file: Validation file path.
-- max_seq_length: Maximum sequence length in BERT. This value depends on pretraining setting. 
-- train_batch_size: Batch size.
-- num_train_epochs Number of epochs.
+- bert_model: pretrained BERT model path.
+- output_dir: save path.
+- train_file: training file path.
+- valid_file: validation file path.
+- max_seq_length: maximum sequence length in BERT. This value depends on pretraining setting. 
+- train_batch_size: batch size.
+- num_train_epochs number of epochs.
 
 The format of training data and validation data: 
 ```
