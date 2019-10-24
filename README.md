@@ -19,13 +19,13 @@ python ./bert_mouth.py \
 --bert_model ./pokemon_model \
 --do_generate \
 --seq_length 20 \
---max_iter 5
+--max_iter 20
 ```
 
 - bert_model: trained model path.                                                                                                                                                                     
 - max_seq_length: maximum sequence length in BERT. This value depends on pretraining setting. 
 - seq_length: generated text length.
-- max_iter: number of iteration in the Gibbs sampling.
+- max_iter: maximum number of iteration in the Gibbs sampling.
 
 generated text examples:
 1. 弱い獲物を一度捕まえると止まらない。毎日１８時間鳴くチビノーズ。
