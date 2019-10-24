@@ -65,7 +65,7 @@ token_A,1 tokenA,2 ... tokenA,An
 token_B,1 tokenB,2 ... tokenB,Bn
 ︙
 ```
-Each row is tokenized by a tokenizer which used pretraining.
+Each row is tokenized by a tokenizer which is used in pretraining.
 
 Training data example:
 ```
