@@ -155,7 +155,7 @@ def train(args, tokenizer, device):
 
                 train_loss += loss.item()
                 running_num += len(batch[0])
-            logger.info("[{0} epochs]"
+            logger.info("[{0} epochs] "
                         "train loss: {1:.3g} ".format(epoch + 1,
                                                       train_loss / running_num))
             summary_writer.add_scalar("train_loss",
@@ -175,8 +175,8 @@ def train(args, tokenizer, device):
                                             model=model))
             logger.info("[{0} epochs] valid loss: {1:.3g}".format(epoch + 1,
                                                                   valid_loss / valid_num))
-            summary_writer.add_scalar(
-                "val_loss", valid_loss / valid_num, epoch)
+            summary_writer.add_scalar("val_loss",
+                                      valid_loss / valid_num, epoch)
 
             model.train()
     except KeyboardInterrupt:
@@ -223,6 +223,7 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=No
     input_type_id = torch.tensor([input_type_id], dtype=torch.long).to(device)
     input_mask = torch.tensor([input_mask], dtype=torch.long).to(device)
 
+    pre_tokens = generated_token_ids.clone()
     for _ in range(max_iter):
         for j in range(length):
             generated_token_ids[0, j + 1] = tokenizer.vocab["[MASK]"]
@@ -233,7 +234,11 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=No
                             for token_id in generated_token_ids[0].cpu().numpy()]
         sampled_sequence = "".join([token[2:] if token.startswith("##") else token
                                     for token in sampled_sequence[1:length + 1]])
-    logger.info("sampled sequence: {}".format(sampled_sequence))
+        if torch.equal(pre_tokens, generated_token_ids):
+            break
+        pre_tokens = generated_token_ids.clone()
+        logger.info("sampled sequence: {}".format(sampled_sequence))
+
     return sampled_sequence
 
 
