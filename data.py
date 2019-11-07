@@ -129,7 +129,7 @@ def make_dataloader(file_path, max_seq_length, batch_size, tokenizer, eval_mode=
 
     for ex_index in [0, 1]:
         inputs_ids, y, input_mask, input_type_ids, target_token_pos = data[ex_index]
-        ex_tokens = features[ex_index].tokens.clone()
+        ex_tokens = features[ex_index].tokens.copy()
         ex_tokens[target_token_pos] = "[MASK]"
         logger.info("*** Loaded Example ***")
         logger.info("guid: %s" % (ex_index))
