@@ -39,6 +39,22 @@ generated text examples:
 9. 化石から復活した科学者を科学力で壊し散らす生命力を持つポケモン。
 10. ただ絶対に捕まえないので傷ついた相手には容赦しない。なぜだか。
 
+You can fix a word as below.
+```
+python ./bert_mouth.py \
+--bert_model ./pokemon_model \
+--do_generate \
+--seq_length 20 \
+--max_iter 20 \
+--fix_word 花
+```
+
+generated text examples:
+1. クチバシのように硬い美しい花を使い獲物をアブリーにしてしまうのだ。
+2. 小柄で大好物は七色。ペルシアンやトレーナーの美しい花を見つめる。
+3. 花を探しに舞い上がる。とりポケモンの中では花畑のペルシアンだ。
+4. 大きな花びらの花を食べていて勇敢に戦うときは踊るようなお腹だ。
+5. 花を自由に組み替えている。夜には活発に活動するので多くの説がある。
 
 ### train on your data 
 

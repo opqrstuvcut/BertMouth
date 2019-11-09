@@ -70,6 +70,10 @@ def parse_argument():
                         help="The sequence length generated.")
     parser.add_argument("--adam_epsilon", default=1e-8, type=float,
                         help="Epsilon for Adam optimizer.")
+    parser.add_argument("--fix_word", default=None, type=str,
+                        help="A fixed word in text generation.")
+    parser.add_argument("--samples", default=10, type=int,
+                        help="The number of generated texts.")
 
     args = parser.parse_args()
     return args
@@ -187,7 +191,7 @@ def train(args, tokenizer, device):
     save(args, model, tokenizer, str(dt_now))
 
 
-def initialization_text(tokenizer, length):
+def initialization_text(tokenizer, length, fix_word):
     except_tokens = ["[MASK]", "[PAD]", "[UNK]", "[CLS]", "[SEP]"]
     except_ids = [tokenizer.vocab[token] for token in except_tokens]
     candidate_ids = [i for i in range(tokenizer.vocab_size)
@@ -202,7 +206,8 @@ def initialization_text(tokenizer, length):
     return init_tokens
 
 
-def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=None):
+def generate(tokenizer, device, max_iter=10, length=50, max_length=128,
+             model=None, fix_word=None, samples=1):
     if isinstance(model, str):
         model_state_dict = torch.load(os.path.join(model, "pytorch_model.bin"),
                                       map_location=device)
@@ -211,35 +216,54 @@ def generate(tokenizer, device, max_iter=10, length=50, max_length=128, model=No
                                           num_labels=tokenizer.vocab_size)
         model.to(device)
 
-    generated_token_ids = initialization_text(tokenizer, length)
-    input_type_id = [0] * max_length
-    input_mask = [1] * len(generated_token_ids)
-    while len(input_mask) < max_length:
-        generated_token_ids.append(0)
-        input_mask.append(0)
+    for _ in range(samples):
+        generated_token_ids = initialization_text(tokenizer, length, fix_word)
 
-    generated_token_ids = torch.tensor([generated_token_ids],
-                                       dtype=torch.long).to(device)
-    input_type_id = torch.tensor([input_type_id], dtype=torch.long).to(device)
-    input_mask = torch.tensor([input_mask], dtype=torch.long).to(device)
+        if fix_word:
+            tokenized_fix_word = tokenizer.tokenize(fix_word)
+            fix_word_pos = random.randint(1,
+                                          length - len(tokenized_fix_word))
+            fix_word_interval = set(range(fix_word_pos,
+                                          fix_word_pos + len(tokenized_fix_word)))
+            for i in range(len(tokenized_fix_word)):
+                generated_token_ids[fix_word_pos + i] = \
+                    tokenizer.convert_tokens_to_ids(tokenized_fix_word[i])
 
-    pre_tokens = generated_token_ids.clone()
-    for _ in range(max_iter):
-        for j in range(length):
-            generated_token_ids[0, j + 1] = tokenizer.vocab["[MASK]"]
-            logits = model(generated_token_ids, input_type_id, input_mask)[0]
-            sampled_token_id = torch.argmax(logits[j + 1])
-            generated_token_ids[0, j + 1] = sampled_token_id
-        sampled_sequence = [tokenizer.ids_to_tokens[token_id]
-                            for token_id in generated_token_ids[0].cpu().numpy()]
-        sampled_sequence = "".join([token[2:] if token.startswith("##") else token
-                                    for token in sampled_sequence[1:length + 1]])
-        if torch.equal(pre_tokens, generated_token_ids):
-            break
+        else:
+            fix_word_interval = []
+
+        input_type_id = [0] * max_length
+        input_mask = [1] * len(generated_token_ids)
+        while len(input_mask) < max_length:
+            generated_token_ids.append(0)
+            input_mask.append(0)
+
+        generated_token_ids = torch.tensor([generated_token_ids],
+                                           dtype=torch.long).to(device)
+        input_type_id = torch.tensor(
+            [input_type_id], dtype=torch.long).to(device)
+        input_mask = torch.tensor([input_mask], dtype=torch.long).to(device)
+
         pre_tokens = generated_token_ids.clone()
-    logger.info("sampled sequence: {}".format(sampled_sequence))
+        for _ in range(max_iter):
+            for j in range(length):
+                if fix_word_interval:
+                    if j + 1 in fix_word_interval:
+                        continue
 
-    return sampled_sequence
+                generated_token_ids[0, j + 1] = tokenizer.vocab["[MASK]"]
+                logits = model(generated_token_ids,
+                               input_type_id, input_mask)[0]
+                sampled_token_id = torch.argmax(logits[j + 1])
+                generated_token_ids[0, j + 1] = sampled_token_id
+            sampled_sequence = [tokenizer.ids_to_tokens[token_id]
+                                for token_id in generated_token_ids[0].cpu().numpy()]
+            sampled_sequence = "".join([token[2:] if token.startswith("##") else token
+                                        for token in sampled_sequence[1:length + 1]])
+            if torch.equal(pre_tokens, generated_token_ids):
+                break
+            pre_tokens = generated_token_ids.clone()
+        logger.info("sampled sequence: {}".format(sampled_sequence))
 
 
 def main():
@@ -263,7 +287,8 @@ def main():
         train(args, tokenizer, device)
     if args.do_generate:
         generate(tokenizer, device, max_iter=args.max_iter,
-                 length=args.seq_length, model=args.bert_model)
+                 length=args.seq_length, model=args.bert_model,
+                 fix_word=args.fix_word, samples=args.samples)
 
 
 if __name__ == '__main__':
