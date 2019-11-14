@@ -133,7 +133,7 @@ def make_dataloader(file_path, max_seq_length, batch_size, tokenizer, eval_mode=
         ex_tokens[target_token_pos] = "[MASK]"
         logger.info("*** Loaded Example ***")
         logger.info("guid: %s" % (ex_index))
-        logger.info("original tokens: %s" %
+        logger.info("masked tokens: %s" %
                     " ".join([str(x) for x in ex_tokens]))
         logger.info("input_ids: %s" % list(inputs_ids.numpy()))
         logger.info("y: %s" % list(y.numpy()))
